@@ -1,0 +1,43 @@
+name: Build Pico Examples
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential git
+
+    - name: Clone Pico SDK
+      run: |
+        git clone https://github.com/raspberrypi/pico-sdk.git --depth 1
+        git -C pico-sdk submodule update --init
+        echo "PICO_SDK_PATH=$(pwd)/pico-sdk" >> $GITHUB_ENV
+
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DPICO_SDK_PATH=$PICO_SDK_PATH
+
+    - name: Build all examples
+      run: |
+        cd build
+        make -j$(nproc)
+
+    - name: Upload UF2 and ELF
+      uses: actions/upload-artifact@v4
+      with:
+        name: pico-build
+        path: |
+          build/**/*.uf2
+          build/**/*.elf
